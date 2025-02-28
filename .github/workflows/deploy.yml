@@ -6,6 +6,9 @@ on:
 
 jobs:
   build-and-deploy:
+    permissions:
+      contents: read
+      pages: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
