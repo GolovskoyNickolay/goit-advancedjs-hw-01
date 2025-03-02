@@ -1,142 +1,68 @@
-import { save, load } from "./localStorage";
-import iziToast from "izitoast";
+import throttle from 'lodash.throttle';
 
-document.body.style.fontFamily = "'Montserrat', sans-serif";
-const form = document.querySelector("form");
-const labels = document.querySelectorAll("label");
-const input = document.querySelector("input");
-const textarea = document.querySelector("textarea");
-const submitButton = document.querySelector("button")
+const elements = {
+  form: document.querySelector('.feedback-form'),
+  emailInput: document.querySelector('[name="email"]'),
+  messageInput: document.querySelector('[name="message"]'),
+};
 
-const formData = {
+const FORM_KEY = 'feedback-form-state';
+const THROTTLE_INTERVAL = 500;
+
+let formData = {
   email: '',
   message: '',
 };
 
-const fillFormField = () => {
-  const formDataFromLS = load('feedback-form-state');
-
-  if (formDataFromLS === undefined) {
-    return;
+function updateLocalStorage() {
+  try {
+    localStorage.setItem(FORM_KEY, JSON.stringify(formData));
+  } catch (error) {
+    console.error(`Failed to save data to localStorage: ${error.message}`);
   }
+}
 
-  const formDataFromLSKeys = Object.keys(formDataFromLS);
+function loadFormData() {
+  try {
+    const savedData = localStorage.getItem(FORM_KEY);
+    if (savedData) {
+      formData = JSON.parse(savedData);
+      elements.emailInput.value = formData.email || '';
+      elements.messageInput.value = formData.message || '';
+    }
+  } catch (error) {
+    console.error(`Failed to load data from localStorage: ${error.message}`);
+  }
+}
 
-  formDataFromLSKeys.forEach(key => {
-    form.elements[key].value = formDataFromLS[key];
-    formData[key] = formDataFromLS[key];
-  });
+function handleInput(event) {
+  formData[event.target.name] = event.target.value;
+  updateLocalStorage();
+}
 
-  console.log(formData);
-};
-
-fillFormField();
-
-const onFormFieldChange = event => {
-  const { target: formField } = event;
-
-  const fieldName = formField.name;
-  const fieldValue = formField.value;
-
-  formData[fieldName] = fieldValue;
-
-  save('feedback-form-state', formData);
-};
-
-const onFeedbackFormSubmit = event => {
+function handleSubmit(event) {
   event.preventDefault();
 
-  const formDataValues = Object.values(formData);
-
-  if (formDataValues.some(el => el === '')) {
-    iziToast.error({
-      message: 'Fill please all fields',
-      position: 'topRight',
-    });
+  if (!elements.emailInput.value || !elements.messageInput.value) {
+    console.error('All form fields must be filled out');
     return;
   }
 
-  console.log(formData);
+  console.log('Submitted form data:', formData);
 
-  event.currentTarget.reset();
-  localStorage.removeItem('feedback-form-state');
-};
+  formData.email = '';
+  formData.message = '';
 
-form.addEventListener('input', onFormFieldChange);
-form.addEventListener('submit', onFeedbackFormSubmit);
+  elements.form.reset();
 
-form.style.display = "inline-flex";
-form.style.padding = "24px";
-form.style.flexDirection = "column";
-form.style.gap = "8px";
-form.style.borderRadius = "8px";
-form.style.background = "#fff";
+  try {
+    localStorage.removeItem(FORM_KEY);
+  } catch (error) {
+    console.error(`Failed to remove data from localStorage: ${error.message}`);
+  }
+}
 
-labels.forEach(label => {
-  label.style.display = "flex";
-  label.style.flexDirection = "column";
-  label.style.gap = "8px";
-  label.style.color = "#2e2f42";
-  label.style.fontFamily = "'Montserrat', sans-serif";
-  label.style.fontSize = "16px";
-  label.style.fontStyle = "normal";
-  label.style.fontWeight = "400";
-  label.style.lineHeight = "24px";
-  label.style.letterSpacing = "0.64px";
-})
+elements.form.addEventListener('input', throttle(handleInput, THROTTLE_INTERVAL));
+elements.form.addEventListener('submit', handleSubmit);
 
-input.style.outline = "none";
-input.style.width = "360px";
-input.style.height = "40px";
-input.style.borderRadius = "4px";
-input.style.border = "1px solid #808080";
-input.style.padding = "8px 16px";
-input.style.fontFamily = "'Montserrat', sans-serif";
-
-textarea.style.outline = "none";
-textarea.style.width = "360px";
-textarea.style.height = "80px";
-textarea.style.borderRadius = "4px";
-textarea.style.border = "1px solid #808080";
-textarea.style.padding = "8px 16px";
-textarea.style.fontFamily = "'Montserrat', sans-serif";
-
-input.addEventListener("mouseenter", () => {
-  input.style.border = "1px solid #000";
-});
-input.addEventListener("mouseleave", () => {
-  input.style.border = "1px solid #808080";
-});
-
-textarea.addEventListener("mouseenter", () => {
-  textarea.style.border = "1px solid #000";
-});
-textarea.addEventListener("mouseleave", () => {
-  textarea.style.border = "1px solid #808080";
-});
-
-submitButton.style.outline = "none";
-submitButton.style.marginTop = "8px";
-submitButton.style.width = "86px";
-submitButton.style.height = "40px";
-submitButton.style.display = "flex";
-submitButton.style.justifyContent = "center";
-submitButton.style.alignItems = "center";
-submitButton.style.padding = "8px 16px";
-submitButton.style.borderRadius = "8px";
-submitButton.style.border = "none";
-submitButton.style.background = "#4E75FF";
-submitButton.style.color = "#FFF";
-submitButton.style.fontFamily = "'Montserrat', sans-serif";
-submitButton.style.fontSize = "16px";
-submitButton.style.fontStyle = "normal";
-submitButton.style.fontWeight = "500";
-submitButton.style.lineHeight = "24px";
-submitButton.style.letterSpacing = "0.64px";
-
-submitButton.addEventListener("mouseenter", () => {
-  submitButton.style.background = "#6C8CFF";
-});
-submitButton.addEventListener("mouseleave", () => {
-  submitButton.style.background = "#4E75FF";
-});
+loadFormData();
